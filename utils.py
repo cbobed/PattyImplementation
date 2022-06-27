@@ -8,7 +8,6 @@ import numpy as np
 import spacy
 import itertools as it
 import os
-nlp = spacy.load('en_core_web_sm')
 from collections import defaultdict
 import random
 import copy
@@ -17,14 +16,14 @@ from utils import *
 import pickle
 import math
 
-
+MODEL = 'es_core_news_sm'
+nlp = spacy.load(MODEL)
 
 def read_corpus(file):
     corpus = []
-    with open(file, 'rb') as f:
+    with open(file, 'r', encoding='utf-8') as f:
         for line in f:
             line = line.strip()
-            line = str(line,'utf-8')
             corpus.append(line)
     return corpus
 
@@ -43,16 +42,22 @@ def check_entities(sentence):
     return total_present, entities_present
 
 def shortest_dependency_path(doc, e1=None, e2=None):
+    ## CB: This should also work for NERs, if the dep parsing is pointing at the
+    ## head of the entity,
+    ## However, the NE would not be added completely
     edges = []
     for token in doc:
         for child in token.children:
-            edges.append(('{0}'.format(token),
-                          '{0}'.format(child)))
+            edges.append(('{0}'.format(token.i),
+                          '{0}'.format(child.i)))
     graph = nx.Graph(edges)
+    shortest_path = []
     try:
-        shortest_path = nx.shortest_path(graph, source=e1, target=e2)
+        # print (f'looking shortest path from {e1.i} to {e2.i}')
+        shortest_path = nx.shortest_path(graph, source=str(e1.i), target=str(e2.i))
     except nx.NetworkXNoPath:
-        shortest_path = []
+        print ("problems with shortest_path")
+        shortest_path=[]
     return shortest_path
 
 def adv_mod_deps(x, dep_parse):

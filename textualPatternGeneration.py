@@ -5,16 +5,18 @@ import numpy as np
 import spacy
 import itertools as it
 import os
-nlp = spacy.load('en_core_web_sm')
 from collections import defaultdict
 import random
 import copy
 import sys
 from utils import *
+import utils
+
 import pickle
 import math
 import scipy.stats as st
 
+nlp = spacy.load(utils.MODEL)
 
 def generate_textual_patterns(corpus):
     """A method to generate textual patterns given the corpus.
@@ -33,21 +35,27 @@ def generate_textual_patterns(corpus):
     textual_patterns = []
     for i, sentence in enumerate(corpus):
         dep_parse = nlp(sentence)
-        entity_length, entities = check_entities(sentence)
+        print (f'{i}::{sentence}')
         try:
-            if entity_length == 2:
-                path = shortest_dependency_path(dep_parse, entities[0], entities[1])
+            if len(dep_parse.ents) == 2:
+                path = shortest_dependency_path(dep_parse, dep_parse[dep_parse.ents[0].start], dep_parse[dep_parse.ents[1].start])
                 if len(path) != 2:
-                    shortest_path = ' '.join(path)
+                    shortest_path = dep_parse.ents[0].label_+'_<'+str(dep_parse[dep_parse.ents[0].start:dep_parse.ents[0].end]) + '> '
+                    shortest_path += ' '.join([dep_parse[int(j)].text for j in path[1:-1]])
+                    shortest_path += ' '+dep_parse.ents[1].label_+'_<'+str(dep_parse[dep_parse.ents[1].start:dep_parse.ents[1].end]) + '> '
                     textual_patterns.append(adv_mod_deps(shortest_path, dep_parse))
-            elif entity_length > 2:
-                pairs = it.combinations(entities, 2)
+
+            elif len(dep_parse.ents)> 2:
+                pairs = it.combinations(dep_parse.ents, 2)
                 for pair in pairs:
-                    path = shortest_dependency_path(dep_parse, pair[0], pair[1])
+                    path = shortest_dependency_path(dep_parse, dep_parse[pair[0].start], dep_parse[pair[1].start])
                     if len(path) != 2:
-                        shortest_path = ' '.join(path)
+                        shortest_path = pair[0].label_+'_<'+ str(dep_parse[pair[0].start:pair[0].end]) + '> '
+                        shortest_path += ' '.join([dep_parse[int(j)].text for j in path[1:-1]])
+                        shortest_path += ' '+pair[1].label_+'_<'+str(dep_parse[pair[1].start:pair[1].end])+'> '
                         textual_patterns.append(adv_mod_deps(shortest_path, dep_parse))
-        except:
+        except Exception as e:
+            print (e)
             pass
     return(textual_patterns)
 
@@ -67,7 +75,7 @@ def write_textual_patterns_to_file(pattern_file, textual_patterns):
         Doesn't return anything
 
     """
-    with open(pattern_file, "w") as f:
+    with open(pattern_file, 'w',encoding='utf-8') as f:
         for p in textual_patterns:
             f.write(str(p) + "\n")
 
@@ -86,10 +94,9 @@ def convert_textual_patterns_to_lower_case(pattern_file):
 
     """
     textual_patterns = []
-    with open(pattern_file, 'rb') as f:
+    with open(pattern_file, 'r') as f:
         for line in f:
             line = line.strip()
-            line = str(line,'utf-8')
             w = line.split(" ")
             if(len(w) <=2):
                 continue
