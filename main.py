@@ -42,9 +42,6 @@ sents.append("Apple planea comprar todo lo que pueda en Reino Unido")
 sents.append("Apple planea comprar todo lo que pueda en Reino Unido")
 sents.append("Apple planea comprar todo lo que pueda en Reino Unido")
 sents.append("Apple planea comprar todo lo que pueda directo en Reino Unido")
-
-## Currently we are working with the dependency tree, it might be worthy
-## checking how just normal sequential parsing behaves in Spanish
 textual_patterns, post = generate_textual_patterns_with_pos_tags(sents, False)
 
 write_textual_patterns_to_file("file.txt", textual_patterns)
