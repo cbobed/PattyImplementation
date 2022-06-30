@@ -60,6 +60,8 @@ def shortest_dependency_path(doc, e1=None, e2=None):
         shortest_path=[]
     return shortest_path
 
+## TODO: to be revisited as they work at string level, and this should be done keeping the
+## token order if we want not to lose the original POS tagging
 def adv_mod_deps(x, dep_parse):
     for token in dep_parse:
         if token.dep_ == "advmod":
@@ -71,6 +73,26 @@ def adv_mod_deps(x, dep_parse):
                     x.insert(x.index(str(token.head.text)), str(token))
                     break
     return x
+
+def obtain_children(idx, doc):
+    to_process = [c for c in doc[idx].children]
+    children=[]
+    while len(to_process) != 0:
+        c = to_process.pop()
+        children.append(c.i)
+        for child in c.children:
+            if child.offset not in children:
+                to_process.append(child)
+
+    return sorted(children)
+def add_children_deps(path, dep_parse):
+    children_start = obtain_children(int(path[0]), dep_parse)
+    children_end = obtain_children(int(path[-1]), dep_parse)
+    test = [int(x) for x in (path + children_start + children_end)]
+    if int(path[0]) < int(path[-1]):
+        return sorted(test)
+    else:
+        return sorted(test,reverse=True)
 
 def detype(pat):
     words = pat.split(" ")
@@ -116,16 +138,3 @@ def calculate_wilson_score(s, b, confidence=0.05):
 #calculate_wilson_score([ 'a','b'], ['a','b','c','d','e','f', 'g','h','i','j'], 0.95)
 
 # strength_pat, conf_pat = get_strength_confidence(p_s_c, utc)
-def generate_pos_tags_for_patterns(textual_patterns, filename):
-    post = list()
-    i = 0
-    for pat in textual_patterns:
-        dep = nlp(pat)
-        ls = list()
-        for t in dep:
-            ls.append(t.pos_)
-        post.append(ls)
-    print("Done")
-    with open(filename, 'wb') as f:
-        pickle.dump([textual_patterns, post], f)
-    return post

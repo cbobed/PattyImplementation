@@ -32,16 +32,13 @@ def generate_seqmining_dataset(patterns):
     """
     smining_dataset = []
     for pattern in patterns:
-        words = pattern.split(" ")
-        temp = []
-        for word in words:
-            if word.startswith("CHEMICAL_") or word.startswith("DISEASE_") or word.startswith("GENE_"):
-                if len(temp) != 0:
-                    temp = ' '.join(temp)
-                    smining_dataset.append(temp)
-                    temp = []
-            else:
-                temp.append(word)
+        matches = re.finditer('[PLO][EOR][RCG][C]?_<.*?>|MISC_<.*?>', pattern)
+        prev_match = next(matches)
+        smining_dataset.append(pattern[0:prev_match.start()])
+        for current_match in matches:
+            smining_dataset.append(pattern[prev_match.end():current_match.start()])
+            prev_match = current_match
+        smining_dataset.append(pattern[prev_match.end():])
     return smining_dataset
 
 def generate_frequent_ngrams(dataset, min_sup):
