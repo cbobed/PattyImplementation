@@ -30,20 +30,34 @@ nlp = spacy.load(utils.MODEL)
 params = {'data_dir': sys.argv[1], 'corpus_fn': sys.argv[2]}
 
 corpus = read_corpus(os.path.join(params['data_dir'], params['corpus_fn']))
-textual_patterns = generate_textual_patterns(corpus)
-# textual_patterns = generate_textual_patterns(sentences)
+# textual_patterns = generate_textual_patterns(corpus)
+
+sents = []
+for s in sentences:
+    sents.append(s)
+
+sents.append("Apple planea comprar todo lo que pueda en Reino Unido")
+sents.append("Apple planea comprar todo lo que pueda en Reino Unido")
+sents.append("Apple planea comprar todo lo que pueda en Reino Unido")
+sents.append("Apple planea comprar todo lo que pueda en Reino Unido")
+sents.append("Apple planea comprar todo lo que pueda en Reino Unido")
+sents.append("Apple planea comprar todo lo que pueda directo en Reino Unido")
+textual_patterns, post = generate_textual_patterns_with_pos_tags(sents, False)
 
 write_textual_patterns_to_file("file.txt", textual_patterns)
+dump_textual_pos_tags_patterns_to_pickle_file(textual_patterns, post, "TexPatPosTag.pkl")
 textual_patterns = convert_textual_patterns_to_lower_case("file.txt")
-post = generate_pos_tags_for_patterns(textual_patterns, "TexPatPosTag.pkl")
 
-# seqmining_dataset = generate_seqmining_dataset(textual_patterns)
-# ngrams = generate_frequent_ngrams(seqmining_dataset, 5)
-#
-# sol_patterns = generate_sol_patterns(textual_patterns, ngrams)
-# sol_pos_patterns = generate_sol_pos_patterns(textual_patterns, ngrams, post)
-# with open('sp_spp.pkl', 'wb') as f:
-#     pickle.dump([sol_patterns, sol_pos_patterns], f)
+seqmining_dataset = generate_seqmining_dataset(textual_patterns)
+ngrams = generate_frequent_ngrams(seqmining_dataset, 5)
+sol_patterns, sol_pos_patterns = generate_sol_and_sol_pos_patterns(textual_patterns, ngrams, post)
+for i in range(len(sol_patterns)):
+    print (f'sol_pattern: {sol_patterns[i]}')
+    print (f'sol_pos_patterns: {sol_pos_patterns[i]}')
+with open('sp_spp.pkl', 'wb') as f:
+    pickle.dump([sol_patterns, sol_pos_patterns], f)
+
+
 #
 # pats, poscloud, suppcloud = get_support_of_sols(sol_patterns, sol_pos_patterns)
 # with open('pat_pos_supp.pkl', 'wb') as f:

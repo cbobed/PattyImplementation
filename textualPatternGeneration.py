@@ -18,7 +18,7 @@ import scipy.stats as st
 
 nlp = spacy.load(utils.MODEL)
 
-def generate_textual_patterns(corpus):
+def generate_textual_patterns_with_pos_tags(corpus, extend_children=False):
     """A method to generate textual patterns given the corpus.
 
     Parameters
@@ -32,6 +32,8 @@ def generate_textual_patterns(corpus):
         List of textual patterns
 
     """
+
+    patterns_pos_tags = []
     textual_patterns = []
     for i, sentence in enumerate(corpus):
         dep_parse = nlp(sentence)
@@ -40,24 +42,52 @@ def generate_textual_patterns(corpus):
             if len(dep_parse.ents) == 2:
                 path = shortest_dependency_path(dep_parse, dep_parse[dep_parse.ents[0].start], dep_parse[dep_parse.ents[1].start])
                 if len(path) != 2:
+                    if (extend_children):
+                        path = add_children_deps(path, dep_parse)
+                    else:
+                        path = [int (x) for x in path]
+                    ## we add the entity and its POS in parallel
                     shortest_path = dep_parse.ents[0].label_+'_<'+str(dep_parse[dep_parse.ents[0].start:dep_parse.ents[0].end]) + '> '
-                    shortest_path += ' '.join([dep_parse[int(j)].text for j in path[1:-1]])
+                    pos_tags = ['<'+dep_parse.ents[0].label_+'>']
+                    ## we add all the words in the middle in the same order
+                    shortest_path += ' '.join([dep_parse[j].text for j in path[1:-1]])
+                    for j in path[1:-1]:
+                        pos_tags.append(dep_parse[j].pos_)
+                    ## and now the last entity
                     shortest_path += ' '+dep_parse.ents[1].label_+'_<'+str(dep_parse[dep_parse.ents[1].start:dep_parse.ents[1].end]) + '> '
-                    textual_patterns.append(adv_mod_deps(shortest_path, dep_parse))
-
+                    pos_tags.append('<'+dep_parse.ents[1].label_+'>')
+                    # TODO: update the way of extending with advmod (not yet)
+                    # textual_patterns.append(adv_mod_deps(shortest_path, dep_parse))
+                    textual_patterns.append(shortest_path)
+                    patterns_pos_tags.append(pos_tags)
             elif len(dep_parse.ents)> 2:
                 pairs = it.combinations(dep_parse.ents, 2)
                 for pair in pairs:
                     path = shortest_dependency_path(dep_parse, dep_parse[pair[0].start], dep_parse[pair[1].start])
                     if len(path) != 2:
+                        if (extend_children):
+                            path = add_children_deps(path, dep_parse)
+                        else:
+                            path = [int(x) for x in path]
                         shortest_path = pair[0].label_+'_<'+ str(dep_parse[pair[0].start:pair[0].end]) + '> '
-                        shortest_path += ' '.join([dep_parse[int(j)].text for j in path[1:-1]])
+                        pos_tags = ['<' + pair[0].label_ + '>']
+                        shortest_path += ' '.join([dep_parse[j].text for j in path[1:-1]])
+                        for j in path[1:-1]:
+                            pos_tags.append(dep_parse[j].pos_)
                         shortest_path += ' '+pair[1].label_+'_<'+str(dep_parse[pair[1].start:pair[1].end])+'> '
-                        textual_patterns.append(adv_mod_deps(shortest_path, dep_parse))
+                        pos_tags.append('<' + pair[1].label_ + '>')
+                        # TODO: update this
+                        # textual_patterns.append(adv_mod_deps(shortest_path, dep_parse))
+                        textual_patterns.append(shortest_path)
+                        patterns_pos_tags.append(pos_tags)
         except Exception as e:
             print (e)
             pass
-    return(textual_patterns)
+    return textual_patterns, patterns_pos_tags
+
+
+
+
 
 def write_textual_patterns_to_file(pattern_file, textual_patterns):
     """A utility to write the generated textual patterns to a file.
@@ -79,6 +109,10 @@ def write_textual_patterns_to_file(pattern_file, textual_patterns):
         for p in textual_patterns:
             f.write(str(p) + "\n")
 
+def dump_textual_pos_tags_patterns_to_pickle_file(textual_patterns, pos_tag_patterns, filename):
+    with open(filename, 'wb') as f:
+        pickle.dump([textual_patterns, pos_tag_patterns], f)
+
 def convert_textual_patterns_to_lower_case(pattern_file):
     """Converts patterns to lower case barring the entities.
 
@@ -96,31 +130,15 @@ def convert_textual_patterns_to_lower_case(pattern_file):
     textual_patterns = []
     with open(pattern_file, 'r') as f:
         for line in f:
-            line = line.strip()
-            w = line.split(" ")
-            if(len(w) <=2):
-                continue
-            f = 0
-            if w[0].startswith("CHEMICAL_") or w[0].startswith("DISEASE_") or w[0].startswith("GENE_"):
-                pass
-            else:
-                f = 1
-            if w[len(w)-1].startswith("CHEMICAL_") or w[len(w)-1].startswith("DISEASE_") or w[len(w)-1].startswith("GENE_"):
-                pass
-            else:
-                f = 1
-            if f == 0:
-                fl = 0
-                for ii in range(len(w)):
-                    i = w[ii]
-                    fl = 1*("CHEMICAL_" in i) + 1*("DISEASE_" in i) + 1*("GENE_" in i)
-                    if fl!=1:
-                        w[ii]  = str.lower(i)
-                    if fl > 1:
-                        break
-                if fl > 1:
-                    continue
-                strmed = ' '.join(w[1:len(w)-1])
-                strmed = str(w[0]) + " " + strmed + " " + str(w[len(w)-1])
-                textual_patterns.append(strmed)
+            line = line.strip().rstrip('\n')
+            matches = re.finditer('[PLO][EOR][RCG][C]?_<.*?>|MISC_<.*?>', line)
+            prev_match = next(matches)
+            construct = str.lower(line[0:prev_match.start()])
+            for current_match in matches:
+                construct += line[prev_match.start():prev_match.end()]
+                construct += str.lower(line[prev_match.end():current_match.start()])
+                prev_match = current_match
+            construct += line[prev_match.start():prev_match.end()]
+            construct += str.lower(line[prev_match.end():])
+            textual_patterns.append(construct)
     return textual_patterns
