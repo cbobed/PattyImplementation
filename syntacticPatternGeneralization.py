@@ -12,6 +12,8 @@ import sys
 from utils import *
 import utils
 
+from solPatternGeneration import is_entity
+
 import pickle
 import math
 import scipy.stats as st
@@ -20,6 +22,10 @@ nlp = spacy.load(utils.MODEL)
 
 
 #pats, poscloud, suppcloud
+
+# registersupport(syncloudwithsupport, syncloud, activesyn, patstr, supps[patstr])
+
+
 def registersupport(syncloudwithsupport, syncloud, activesyn, syn, supp):
     setsup = set(supp.keys())
 
@@ -49,6 +55,13 @@ def registersupport(syncloudwithsupport, syncloud, activesyn, syn, supp):
             syncloudwithsupport[syn][k] += supp[k]
     return
 
+def anything_generalizable(poss):
+    return any([not is_entity(x) and x != "*" for x in poss])
+
+def substitute_ne_placeholders(pattern):
+    aux = detype(pattern)
+    return aux
+
 #pattern is a list- each list elements will be one of entity, n-grams, *
 #sup is set of tuples. tuples size will be equal to no. of entity in pattern
 def gensyngen(pats, poscloud, supps):
@@ -58,42 +71,48 @@ def gensyngen(pats, poscloud, supps):
     ----------
     pats : List of patterns.
     poscloud : POS support of patterns
+    supps: List of support of patterns
 
     """
     syncloud = dict()
     activesyn = dict()
     syncloudwithsupport = dict()
-    #ghanta = 0
+
     for p in range(len(pats)):
 
         patstr = pats[p]
         pat = patstr.split(" ")
         poss = poscloud[patstr]
         poss = poss.split(" ")
+
         f = 0
         for i in range(len(poss)):
-            if poss[i]=="<ENTITY>":
+            if poss[i] == "<ENTITY>":
                 pass
-            elif poss[i] =="*":
+            elif poss[i] == "*":
                 pass
             else:
                 f = 1
                 break
-        if f==0:
-            #ghanta+=1
+        if f == 0:
+            # ghanta+=1
             continue
+
+
+        # if not anything_generalizable(poss):
+        #     continue
+
         #typeuntye
+        # registersupport(syncloudwithsupport, syncloud, activesyn, syn, supp):
         registersupport(syncloudwithsupport, syncloud, activesyn, patstr, supps[patstr])
         syn = copy.deepcopy(patstr)
-        syn = syn.replace("<CHEMICAL>", "<ENTITY>")
-        syn = syn.replace("<DISEASE>", "<ENTITY>")
-        syn = syn.replace("<GENE>", "<ENTITY>")
+        syn = substitute_ne_placeholders(syn)
         registersupport(syncloudwithsupport, syncloud, activesyn, syn, supps[patstr])
 
         #ngram contraction
         Nngram = list()
         for i in range(len(pat)):
-            if pat[i]== "<CHEMICAL>" or pat[i]== "<DISEASE>" or pat[i]== "<GENE>" or pat[i] == "*":
+            if is_entity(pat[i]) or pat[i] == "*":
                 pass
             else:
                 Nngram.append(i)
@@ -110,16 +129,15 @@ def gensyngen(pats, poscloud, supps):
                 if (i == ing+1) or (i== ing + 2):
                     pass
                 elif i == ing:
-                    if pat[i+3] != "*"  or pat[i-1] != "*":
-                        tok.append("*")
+                    if (i+3 < len(pat) and (i-1) > 0):
+                        if pat[i+3] != "*"  or pat[i-1] != "*":
+                            tok.append("*")
                 else:
                     tok.append(pat[i])
             syn = ' '.join(tok)
             syn = syn.replace(" * * "," * ")
             registersupport(syncloudwithsupport, syncloud, activesyn, syn, supps[patstr])
-            syn = syn.replace("<CHEMICAL>", "<ENTITY>")
-            syn = syn.replace("<DISEASE>", "<ENTITY>")
-            syn = syn.replace("<GENE>", "<ENTITY>")
+            syn = substitute_ne_placeholders(syn)
             registersupport(syncloudwithsupport, syncloud, activesyn, syn, supps[patstr])
 
         lenpos = 0
@@ -141,19 +159,13 @@ def gensyngen(pats, poscloud, supps):
 
                 ptemp[ipos] = poss[ipos]
                 syn = ' '.join(ptemp)
-                syn = syn.replace("<CHEMICAL>", "<ENTITY>")
-                syn = syn.replace("<DISEASE>", "<ENTITY>")
-                syn = syn.replace("<GENE>", "<ENTITY>")
+                syn = substitute_ne_placeholders(syn)
                 registersupport(syncloudwithsupport, syncloud, activesyn, syn, supps[patstr])
 
                 ptemp[ipos] = "[WORD]"
                 syn = ' '.join(ptemp)
-                syn = syn.replace("<CHEMICAL>", "<ENTITY>")
-                syn = syn.replace("<DISEASE>", "<ENTITY>")
-                syn = syn.replace("<GENE>", "<ENTITY>")
+                syn = substitute_ne_placeholders(syn)
                 registersupport(syncloudwithsupport, syncloud, activesyn, syn, supps[patstr])
-
-
 
         if lenpos > 1:
             ptemp = copy.deepcopy(pat)

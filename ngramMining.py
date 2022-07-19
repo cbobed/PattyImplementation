@@ -32,7 +32,7 @@ def generate_seqmining_dataset(patterns):
     """
     smining_dataset = []
     for pattern in patterns:
-        matches = re.finditer('[PLO][EOR][RCG][C]?_<.*?>|MISC_<.*?>', pattern)
+        matches = re.finditer('[GPLO][PEOR][ERCG][C]?_<.*?>|MISC_<.*?>|MONEY_<.*?>', pattern)
         prev_match = next(matches)
         smining_dataset.append(pattern[0:prev_match.start()])
         for current_match in matches:

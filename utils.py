@@ -17,7 +17,10 @@ import pickle
 import math
 
 MODEL = 'es_core_news_sm'
+# MODEL = 'en_core_web_md'
+# MODEL = 'es_core_news_lg'
 nlp = spacy.load(MODEL)
+
 
 def read_corpus(file):
     corpus = []
@@ -27,19 +30,30 @@ def read_corpus(file):
             corpus.append(line)
     return corpus
 
+def is_entity(word):
+    return "<ORG>" == word \
+           or "<LOC>" == word \
+           or "<PER>" == word \
+           or "<MISC>" == word \
+           or "<GPE>" == word \
+           or "<MONEY>" == word \
+           or "<ENTITY>" == word
+
+
 #helper funtion to check entities
-def check_entities(sentence):
-    possible_entities = ["CHEMICAL_", "GENE_", "DISEASE_"]
-    sentence_words = sentence.split(" ")
-    total_present = 0
-    entities_present = []
-    for ent in possible_entities:
-        result = [word for word in sentence_words if ent in word]
-        if len(result) > 0:
-            result = set(result)
-            total_present += len(result)
-            entities_present.extend(list(result))
-    return total_present, entities_present
+# def check_entities(sentence):
+#     possible_entities = ["CHEMICAL_", "GENE_", "DISEASE_"]
+#     sentence_words = sentence.split(" ")
+#     total_present = 0
+#     entities_present = []
+#     for ent in possible_entities:
+#         result = [word for word in sentence_words if ent in word]
+#         if len(result) > 0:
+#             result = set(result)
+#             total_present += len(result)
+#             entities_present.extend(list(result))
+#     return total_present, entities_present
+#
 
 def shortest_dependency_path(doc, e1=None, e2=None):
     ## CB: This should also work for NERs, if the dep parsing is pointing at the
@@ -56,7 +70,7 @@ def shortest_dependency_path(doc, e1=None, e2=None):
         # print (f'looking shortest path from {e1.i} to {e2.i}')
         shortest_path = nx.shortest_path(graph, source=str(e1.i), target=str(e2.i))
     except nx.NetworkXNoPath:
-        print ("problems with shortest_path")
+        print (f'problems with shortest_path - {str(e1.i)} {doc[e1.i]} - {str(e2.i)} {doc[e2.i]}')
         shortest_path=[]
     return shortest_path
 
@@ -98,7 +112,7 @@ def detype(pat):
     words = pat.split(" ")
     strret = list()
     for w in words:
-        if w == "<CHEMICAL>" or w == "<DISEASE>" or w == "<GENE>":
+        if is_entity(w):
             strret.append("<ENTITY>")
         else:
             strret.append(w)

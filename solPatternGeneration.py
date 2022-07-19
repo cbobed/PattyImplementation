@@ -20,9 +20,6 @@ nlp = spacy.load(utils.MODEL)
 
 SUPPORT_THRESHOLD = 5
 
-def is_entity(word):
-    return "<ORG>" == word or "<LOC>" == word or "<PER>" == word or "<MISC>" == word
-
 #replacing non entity non frequent n gram by wildcard
 def generate_sol_and_sol_pos_patterns(patterns, ngrams, post):
     """A method to generate SOL patterns given the textual patterns and ngrams, along with the sol_pos pattern as well.
@@ -48,7 +45,7 @@ def generate_sol_and_sol_pos_patterns(patterns, ngrams, post):
     sol_pos_patterns = []
     for pattern_index, pattern in enumerate(patterns):
         splitted_pattern = []
-        matches = re.finditer('[PLO][EOR][RCG][C]?_<.*?>|MISC_<.*?>', pattern)
+        matches = re.finditer('[GPLO][PEOR][ERCG][C]?_<.*?>|MISC_<.*?>|MONEY_<.*?>', pattern)
         prev_match = next(matches)
         line = pattern [0:prev_match.start()]
         splitted_pattern+=pattern [0:prev_match.start()].split()

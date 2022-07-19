@@ -105,7 +105,7 @@ def write_textual_patterns_to_file(pattern_file, textual_patterns):
         Doesn't return anything
 
     """
-    with open(pattern_file, 'w',encoding='utf-8') as f:
+    with open(pattern_file, 'w', encoding='utf-8') as f:
         for p in textual_patterns:
             f.write(str(p) + "\n")
 
@@ -128,10 +128,11 @@ def convert_textual_patterns_to_lower_case(pattern_file):
 
     """
     textual_patterns = []
-    with open(pattern_file, 'r') as f:
+    with open(pattern_file, 'r', encoding='UTF-8') as f:
         for line in f:
+            print(line)
             line = line.strip().rstrip('\n')
-            matches = re.finditer('[PLO][EOR][RCG][C]?_<.*?>|MISC_<.*?>', line)
+            matches = re.finditer('[GPLO][PEOR][ERCG]_<.*?>|MISC_<.*?>|MONEY_<.*>', line)
             prev_match = next(matches)
             construct = str.lower(line[0:prev_match.start()])
             for current_match in matches:
