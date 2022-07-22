@@ -19,8 +19,13 @@ import math
 MODEL = 'es_core_news_sm'
 # MODEL = 'en_core_web_md'
 # MODEL = 'es_core_news_lg'
-nlp = spacy.load(MODEL)
 
+# we centralize the extraction
+nlp = spacy.load(MODEL)
+ruler = nlp.add_pipe("entity_ruler")
+patterns = [ {"label": "DNI", "pattern": [{"TEXT": {"REGEX": ".*?[0-9]{8}[A-Z]"}}]},
+             {"label": "NUM", "pattern": [{"IS_DIGIT":True}]} ]
+ruler.add_patterns(patterns)
 
 def read_corpus(file):
     corpus = []
@@ -31,14 +36,10 @@ def read_corpus(file):
     return corpus
 
 def is_entity(word):
-    return "<ORG>" == word \
-           or "<LOC>" == word \
-           or "<PER>" == word \
-           or "<MISC>" == word \
-           or "<GPE>" == word \
-           or "<MONEY>" == word \
-           or "<ENTITY>" == word
+    return word in ["<ORG>", "<LOC>", "<PER>", "<MISC>", "<GPE>", "<MONEY>", "<DNI>", "<ENTITY>", "<NUM>"]
 
+def find_entity_matches(line):
+    return re.finditer('[GPLODN][PEORNU][ERCGIM]_<.*?>|MISC_<.*?>|MONEY_<.*>', line)
 
 #helper funtion to check entities
 # def check_entities(sentence):
@@ -64,6 +65,9 @@ def shortest_dependency_path(doc, e1=None, e2=None):
         for child in token.children:
             edges.append(('{0}'.format(token.i),
                           '{0}'.format(child.i)))
+            edges.append(('{0}'.format(child.i),
+                          '{0}'.format(token.i)))
+
     graph = nx.Graph(edges)
     shortest_path = []
     try:
@@ -71,6 +75,7 @@ def shortest_dependency_path(doc, e1=None, e2=None):
         shortest_path = nx.shortest_path(graph, source=str(e1.i), target=str(e2.i))
     except nx.NetworkXNoPath:
         print (f'problems with shortest_path - {str(e1.i)} {doc[e1.i]} - {str(e2.i)} {doc[e2.i]}')
+        print (graph)
         shortest_path=[]
     return shortest_path
 
@@ -117,6 +122,8 @@ def detype(pat):
         else:
             strret.append(w)
     strret = ' '.join(strret)
+    print (f'vs {pat}')
+    print (f'vs {strret}')
     return strret
 
 def get_strength_confidence(p_s_c, utc):

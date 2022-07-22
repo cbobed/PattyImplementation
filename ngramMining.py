@@ -9,14 +9,14 @@ from collections import defaultdict
 import random
 import copy
 import sys
+
+# The nlp model is loaded and configured at utils
 from utils import *
 import utils
 
 import pickle
 import math
 import scipy.stats as st
-
-nlp = spacy.load(utils.MODEL)
 
 def generate_seqmining_dataset(patterns):
     """This function generates a sequence database to mine n-grams from.
@@ -32,7 +32,7 @@ def generate_seqmining_dataset(patterns):
     """
     smining_dataset = []
     for pattern in patterns:
-        matches = re.finditer('[GPLO][PEOR][ERCG][C]?_<.*?>|MISC_<.*?>|MONEY_<.*?>', pattern)
+        matches = find_entity_matches(pattern)
         prev_match = next(matches)
         smining_dataset.append(pattern[0:prev_match.start()])
         for current_match in matches:

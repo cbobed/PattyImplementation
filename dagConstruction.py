@@ -15,8 +15,6 @@ import pickle
 import math
 import scipy.stats as st
 
-nlp = spacy.load(utils.MODEL)
-
 def dfs(l, vis, a, b):
     """Performs a Depth First Search.
 

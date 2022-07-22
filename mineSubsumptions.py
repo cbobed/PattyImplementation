@@ -9,14 +9,14 @@ from collections import defaultdict
 import random
 import copy
 import sys
+
+# The nlp model is loaded and configured at utils
 from utils import *
 import utils
 
 import pickle
 import math
 import scipy.stats as st
-
-nlp = spacy.load(utils.MODEL)
 
 def MineSubsumptions(T, l, iL, alpha):
     """Short summary.

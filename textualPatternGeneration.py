@@ -16,8 +16,6 @@ import pickle
 import math
 import scipy.stats as st
 
-nlp = spacy.load(utils.MODEL)
-
 def generate_textual_patterns_with_pos_tags(corpus, extend_children=False):
     """A method to generate textual patterns given the corpus.
 
@@ -38,6 +36,7 @@ def generate_textual_patterns_with_pos_tags(corpus, extend_children=False):
     for i, sentence in enumerate(corpus):
         dep_parse = nlp(sentence)
         print (f'{i}::{sentence}')
+        print (f'{i}:: Ents{dep_parse.ents}')
         try:
             if len(dep_parse.ents) == 2:
                 path = shortest_dependency_path(dep_parse, dep_parse[dep_parse.ents[0].start], dep_parse[dep_parse.ents[1].start])
@@ -132,7 +131,7 @@ def convert_textual_patterns_to_lower_case(pattern_file):
         for line in f:
             print(line)
             line = line.strip().rstrip('\n')
-            matches = re.finditer('[GPLO][PEOR][ERCG]_<.*?>|MISC_<.*?>|MONEY_<.*>', line)
+            matches = find_entity_matches(line)
             prev_match = next(matches)
             construct = str.lower(line[0:prev_match.start()])
             for current_match in matches:

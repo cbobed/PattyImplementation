@@ -18,41 +18,54 @@ import pickle
 import math
 import scipy.stats as st
 
-nlp = spacy.load(utils.MODEL)
-
-
 #pats, poscloud, suppcloud
 
 # registersupport(syncloudwithsupport, syncloud, activesyn, patstr, supps[patstr])
 
-
+# syncloudwithsupport, syncloud and activesyn are the ones we are filling
+# syn is the current pattern and supp is directly the dict associated to pattern with all the entity signatures
 def registersupport(syncloudwithsupport, syncloud, activesyn, syn, supp):
-    setsup = set(supp.keys())
-
+    # entity signatures of the pattern
+    print(f'registering {syn}...')
+    pattern_entity_signatures = set(supp.keys())
     if syn not in activesyn:
+        #we initialize this pattern
         activesyn[syn] = True
         syncloud[syn] = list()
-        syncloud[syn].append(copy.deepcopy(setsup))
+        syncloud[syn].append(copy.deepcopy(pattern_entity_signatures))
         syncloudwithsupport[syn] = dict()
         for k in supp:
-            syncloudwithsupport[syn][k] = supp[k]
+            syncloudwithsupport[syn][k] = {}
+            syncloudwithsupport[syn][k]['accum_sup'] = supp[k]['accum_sup']
+            syncloudwithsupport[syn][k]['original_sup'] = []
+            syncloudwithsupport[syn][k]['original_sup'].append(supp[k]['original_sup'])
         return
 
     if activesyn[syn] == False:
         return
 
+    # if the current pattern is not a generalized one
     if syn.startswith("<ENTITY>") == False:
+        print('Not generalized... ---------------------')
         for sets in syncloud[syn]:
-            if len(sets.intersection(setsup)) == 0:
+            print(f'comparing...')
+            print(f'{syn}')
+            print(f' {sets} with {pattern_entity_signatures} -- {len(sets.intersection(pattern_entity_signatures))}')
+            if len(sets.intersection(pattern_entity_signatures)) == 0:
                 activesyn[syn] = False
-            return
+                return  ## in the original code this was wrongly tabulated and didn't register the generalized versions
 
-    syncloud[syn].append(copy.deepcopy(setsup))
+    # we aggregate the supports of the pattern into the generalized version
+    syncloud[syn].append(copy.deepcopy(pattern_entity_signatures))
     for k in supp:
         if k not in syncloudwithsupport[syn]:
-            syncloudwithsupport[syn][k] = supp[k]
+            syncloudwithsupport[syn][k] = {}
+            syncloudwithsupport[syn][k]['accum_sup'] = supp[k]['accum_sup']
+            syncloudwithsupport[syn][k]['original_sup'] = []
+            syncloudwithsupport[syn][k]['original_sup'].append(supp[k]['original_sup'])
         else:
-            syncloudwithsupport[syn][k] += supp[k]
+            syncloudwithsupport[syn][k]['accum_sup'] += supp[k]['accum_sup']
+            syncloudwithsupport[syn][k]['original_sup'].append(supp[k]['original_sup'])
     return
 
 def anything_generalizable(poss):
@@ -70,8 +83,8 @@ def gensyngen(pats, poscloud, supps):
     Parameters
     ----------
     pats : List of patterns.
-    poscloud : POS support of patterns
-    supps: List of support of patterns
+    poscloud : List of POS patterns
+    supps: List of dicts with the support of patterns for each entity singnature
 
     """
     syncloud = dict()
@@ -79,36 +92,25 @@ def gensyngen(pats, poscloud, supps):
     syncloudwithsupport = dict()
 
     for p in range(len(pats)):
-
+        print(f'originalPattern: {pats[p]}')
         patstr = pats[p]
         pat = patstr.split(" ")
         poss = poscloud[patstr]
         poss = poss.split(" ")
 
-        f = 0
-        for i in range(len(poss)):
-            if poss[i] == "<ENTITY>":
-                pass
-            elif poss[i] == "*":
-                pass
-            else:
-                f = 1
-                break
-        if f == 0:
-            # ghanta+=1
+        if not anything_generalizable(poss):
             continue
 
-
-        # if not anything_generalizable(poss):
-        #     continue
-
-        #typeuntye
-        # registersupport(syncloudwithsupport, syncloud, activesyn, syn, supp):
+        # First we register the current SOL pattern with its support
+        # syncloudwithsupport, syncloud and activesyn are the ones we are filling
         registersupport(syncloudwithsupport, syncloud, activesyn, patstr, supps[patstr])
+
+        # Second we generalize it by substituting the placeholders of the NE with the generic type
+        ## Note that the support of the newly coined pattern might not be the same (it's taken care of in registersupport)
         syn = copy.deepcopy(patstr)
         syn = substitute_ne_placeholders(syn)
         registersupport(syncloudwithsupport, syncloud, activesyn, syn, supps[patstr])
-
+        # We then generalize the patterns by compacting the ngrams
         #ngram contraction
         Nngram = list()
         for i in range(len(pat)):
@@ -119,7 +121,7 @@ def gensyngen(pats, poscloud, supps):
         try:
             assert len(Nngram)%3 == 0
         except AssertionError:
-            print(patstr)
+            print(f'assertion error: {patstr}')
 
         for ii in range(0,len(Nngram),3):
             ing = Nngram[ii]
@@ -143,7 +145,7 @@ def gensyngen(pats, poscloud, supps):
         lenpos = 0
 
         for ipos in range(len(pat)):
-            if (poss[ipos] == "<ENTITY>") or (poss[ipos] =="*"):
+            if (is_entity(poss[ipos])) or (poss[ipos] =="*"):
                 continue
             else:
                 lenpos += 1
@@ -170,42 +172,29 @@ def gensyngen(pats, poscloud, supps):
         if lenpos > 1:
             ptemp = copy.deepcopy(pat)
             for ipos in range(len(pat)):
-                if (poss[ipos] == "<ENTITY>") or (poss[ipos] =="*"):
+                if (is_entity(poss[ipos])) or (poss[ipos] =="*"):
                     pass
                 else:
                     ptemp[ipos] = poss[ipos]
             syn = ' '.join(ptemp)
             registersupport(syncloudwithsupport, syncloud, activesyn, syn, supps[patstr])
-            ptemp = copy.deepcopy(pat)
-            for ipos in range(len(pat)):
-                if (poss[ipos] == "<ENTITY>") or (poss[ipos] =="*"):
-                    pass
-                else:
-                    ptemp[ipos] = "[WORD]"
-            syn = ' '.join(ptemp)
+            syn = substitute_ne_placeholders(syn)
             registersupport(syncloudwithsupport, syncloud, activesyn, syn, supps[patstr])
 
-        if lenpos > 1:
-            ptemp = copy.deepcopy(poss)
+            ptemp = copy.deepcopy(pat)
             for ipos in range(len(pat)):
-                if (poss[ipos] == "<ENTITY>") or (poss[ipos] =="*"):
-                    pass
-                else:
-                    ptemp[ipos] = poss[ipos]
-            syn = ' '.join(ptemp)
-            registersupport(syncloudwithsupport, syncloud, activesyn, syn, supps[patstr])
-            ptemp = copy.deepcopy(poss)
-            for ipos in range(len(pat)):
-                if (poss[ipos] == "<ENTITY>") or (poss[ipos] =="*"):
+                if (is_entity(poss[ipos])) or (poss[ipos] =="*"):
                     pass
                 else:
                     ptemp[ipos] = "[WORD]"
             syn = ' '.join(ptemp)
+            registersupport(syncloudwithsupport, syncloud, activesyn, syn, supps[patstr])
+            syn = substitute_ne_placeholders(syn)
             registersupport(syncloudwithsupport, syncloud, activesyn, syn, supps[patstr])
 
         #raise ValueError("bs")
 
-
+    print(f'syn size: {len(syncloud)}')
     retsyncloud = dict()
     untypedcloud = dict()
     for syn in syncloud:
@@ -215,4 +204,6 @@ def gensyngen(pats, poscloud, supps):
             else:
                 untypedcloud[syn] = copy.deepcopy(syncloudwithsupport[syn])
     #print(ghanta)
+    print(f'both :{len(retsyncloud) + len(untypedcloud)}')
+    print(f'non_active: {len([x for x in activesyn if not activesyn[x]])}')
     return retsyncloud, untypedcloud

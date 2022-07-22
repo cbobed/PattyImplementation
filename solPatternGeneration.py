@@ -16,9 +16,7 @@ import pickle
 import math
 import scipy.stats as st
 
-nlp = spacy.load(utils.MODEL)
-
-SUPPORT_THRESHOLD = 5
+SUPPORT_THRESHOLD = 3
 
 #replacing non entity non frequent n gram by wildcard
 def generate_sol_and_sol_pos_patterns(patterns, ngrams, post):
@@ -45,7 +43,7 @@ def generate_sol_and_sol_pos_patterns(patterns, ngrams, post):
     sol_pos_patterns = []
     for pattern_index, pattern in enumerate(patterns):
         splitted_pattern = []
-        matches = re.finditer('[GPLO][PEOR][ERCG][C]?_<.*?>|MISC_<.*?>|MONEY_<.*?>', pattern)
+        matches = find_entity_matches(pattern)
         prev_match = next(matches)
         line = pattern [0:prev_match.start()]
         splitted_pattern+=pattern [0:prev_match.start()].split()
@@ -79,10 +77,11 @@ def generate_sol_and_sol_pos_patterns(patterns, ngrams, post):
         line = ' '.join(["$" if mask[i] else splitted_pattern[i] for i in range(len(mask))])
         words=line.split()
         assert len(words) == len(line.split(" "))
+        # we only keep the tokens belonging to an entity or a substituted ngram ($)
         for i in range(len(words)):
             if words[i] != "$" and not is_entity(words[i]):
                 words[i] = "*"
-        print (words)
+        # print (words)
         # toks = pattern.split(" ")
         for i in range(len(words)):
             if is_entity(words[i]):
@@ -96,9 +95,16 @@ def generate_sol_and_sol_pos_patterns(patterns, ngrams, post):
                 pos_line_tags.append("*")
         strpos = ' '.join(pos_line)
         pos_patterns.append(strpos)
-        strpos = ' '.join(pos_line_tags)
-        sol_pos_patterns.append(strpos)
-
+        strpospol = ' '.join(pos_line_tags)
+        sol_pos_patterns.append(strpospol)
+        print(f'-----------')
+        print(f'pattern: {pattern}')
+        print(f'splittend_pattern:{splitted_pattern}')
+        print(f'mask:{mask}')
+        print(f'line: {line}')
+        print(f'strpos: {strpos}')
+        print(f'strpospol: {strpospol}')
+        print(f'-----------')
     return pos_patterns,sol_pos_patterns
 
 def obtainpat(patlist):
@@ -148,7 +154,10 @@ def get_support_of_sols(sol_patterns, sol_pos_patterns):
             pospat = sol_pos_patterns[i]
             poscloud[pat] = pospat
         if ent not in suppcloud[pat]:
-            suppcloud[pat][ent] = 1
+            suppcloud[pat][ent]={}
+            suppcloud[pat][ent]['accum_sup'] = 1
+            suppcloud[pat][ent]['original_sup'] = [pat]
         else:
-            suppcloud[pat][ent] += 1
+            suppcloud[pat][ent]['accum_sup'] += 1
+            suppcloud[pat][ent]['original_sup'].append(pat)
     return pats, poscloud, suppcloud
