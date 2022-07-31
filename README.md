@@ -1,5 +1,5 @@
-## Python implemementation of PATTY 
-# forked from [ankitk28/CS412Project](https://github.com/ankitk28/CS412Project) 
+# Python implemementation of PATTY 
+### forked from [ankitk28/CS412Project](https://github.com/ankitk28/CS412Project) 
 
 As the name states, this project is a python implementation of PATTY (ref. to be added). 
 While it started as just an adaptation of the already existing implementation to Spanish,
