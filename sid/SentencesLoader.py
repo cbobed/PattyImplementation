@@ -2,7 +2,7 @@ import glob
 import os
 import sys
 
-FILENAME_EXTENSION='*.formatted.txt'
+FILENAME_EXTENSION='*.formatted.txt-proc.txt'
 
 def load_sentences(dir, min_length=3, limit=-1):
     sentences = []

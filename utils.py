@@ -17,6 +17,8 @@ import pickle
 import math
 
 MODEL = 'es_core_news_sm'
+MODEL = 'es_core_news_lg'
+
 # MODEL = 'en_core_web_md'
 # MODEL = 'es_core_news_lg'
 
@@ -100,18 +102,28 @@ def obtain_children(idx, doc):
         c = to_process.pop()
         children.append(c.i)
         for child in c.children:
-            if child.offset not in children:
+            if child.idx not in children:
                 to_process.append(child)
 
     return sorted(children)
+
+def is_idx_part_of_entity(idx,dep_parse):
+    # print(f'is_idx: {idx} - {dep_parse[idx]}')
+    for i in range(len(dep_parse.ents)):
+        # print(f'ent: {dep_parse.ents[i].start} - {dep_parse.ents[i].end} : {[dep_parse[x] for x in range(dep_parse.ents[i].start, dep_parse.ents[i].end)]}')
+        if dep_parse.ents[i].start <= idx and idx <= dep_parse.ents[i].end:
+            return True
+    return False
+
 def add_children_deps(path, dep_parse):
     children_start = obtain_children(int(path[0]), dep_parse)
     children_end = obtain_children(int(path[-1]), dep_parse)
-    test = [int(x) for x in (path + children_start + children_end)]
+    added_children = [x for x in (children_start + children_end) if int(path[0]) <= int(x) and int(x) <= int(path[-1]) and not is_idx_part_of_entity(int(x), dep_parse)]
+    test = [int(x) for x in (path + added_children)]
     if int(path[0]) < int(path[-1]):
-        return sorted(test)
+        return sorted([int(x) for x in test])
     else:
-        return sorted(test,reverse=True)
+        return sorted([int(x) for x in test],reverse=True)
 
 def detype(pat):
     words = pat.split(" ")
@@ -122,25 +134,33 @@ def detype(pat):
         else:
             strret.append(w)
     strret = ' '.join(strret)
-    print (f'vs {pat}')
-    print (f'vs {strret}')
     return strret
 
 def get_strength_confidence(p_s_c, utc):
     strength = dict()
     confidence = dict()
     for pat in utc:
-        strength[pat] = len(utc[pat])
+        # we have to gather all the accum_sup of the typed patterns associated to it
+        strength[pat] = 0;
+        for sign in utc[pat]:
+            strength[pat] += utc[pat][sign]['accum_sup']
     for pat in p_s_c:
-        strength[pat] = len(p_s_c[pat])
+        # here, there should be just ONE signature
+        assert len(p_s_c[pat]) == 1
+        strength[pat] = 0;
+        for sign in p_s_c[pat]:
+            strength[pat] += p_s_c[pat][sign]['accum_sup']
     for pat in p_s_c:
-        confidence[pat] = strength[pat] / strength[(detype(pat))]
+        if (detype(pat) in strength):
+            confidence[pat] = strength[pat] / strength[(detype(pat))]
+        else:
+            print (f'|{pat}| *** |{detype(pat)}| not registered ')
     return strength, confidence
 
 def convert_patterns_list(p_s_c):
     p_l_s_c = dict()
     for it in p_s_c:
-        p_l_s_c[it] = sorted(p_s_c[it].items(), key=lambda x: x[1], reverse = True)
+        p_l_s_c[it] = sorted(p_s_c[it].items(), key=lambda x: x[1]['accum_sup'], reverse = True)
     l_p_l_s_c = list(p_l_s_c.items())
     return  l_p_l_s_c
 

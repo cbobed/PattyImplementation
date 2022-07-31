@@ -40,6 +40,7 @@ def MineSubsumptions(T, l, iL, alpha):
         for j in range(len(l[i][1]) -1, -1, -1):
             ci = iL[l[i][1][j][0]]
             for pat in ci:
+                print(f'pat in ci:{pat}')
                 if pat not in si:
                     si[pat] = 1
                 else:

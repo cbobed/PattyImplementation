@@ -18,14 +18,18 @@ import scipy.stats as st
 
 nlp = spacy.load(utils.MODEL)
 
+#insertNode(root, invertList, l[i][1], 0, i)
 def insertNode(r, iL, l, j, i):
+
     if j == len(l):
         return
+
     if l[j][0] in iL:
         iL[l[j][0]].add(i)
     else:
         iL[l[j][0]] = set()
         iL[l[j][0]].add(i)
+
     if l[j][0] in r[0]:
         r[0][l[j][0]][1].add(i)
         insertNode(r[0][l[j][0]], iL, l, j+1, i)

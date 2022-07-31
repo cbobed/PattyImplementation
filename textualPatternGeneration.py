@@ -35,16 +35,20 @@ def generate_textual_patterns_with_pos_tags(corpus, extend_children=False):
     textual_patterns = []
     for i, sentence in enumerate(corpus):
         dep_parse = nlp(sentence)
-        print (f'{i}::{sentence}')
-        print (f'{i}:: Ents{dep_parse.ents}')
+        # print (f'{i}::{sentence}')
+        # print (f'{i}:: Ents{dep_parse.ents}')
         try:
             if len(dep_parse.ents) == 2:
                 path = shortest_dependency_path(dep_parse, dep_parse[dep_parse.ents[0].start], dep_parse[dep_parse.ents[1].start])
+                # print(f'path: {path}')
+                # print(f'dep_parse[[0].start]: {dep_parse[dep_parse.ents[0].start]}')
+                # print(f'dep_parse[[1].start]: {dep_parse[dep_parse.ents[1].start]}')
                 if len(path) != 2:
                     if (extend_children):
                         path = add_children_deps(path, dep_parse)
                     else:
                         path = [int (x) for x in path]
+                    # print (f'path: {path}')
                     ## we add the entity and its POS in parallel
                     shortest_path = dep_parse.ents[0].label_+'_<'+str(dep_parse[dep_parse.ents[0].start:dep_parse.ents[0].end]) + '> '
                     pos_tags = ['<'+dep_parse.ents[0].label_+'>']
@@ -62,12 +66,16 @@ def generate_textual_patterns_with_pos_tags(corpus, extend_children=False):
             elif len(dep_parse.ents)> 2:
                 pairs = it.combinations(dep_parse.ents, 2)
                 for pair in pairs:
+                    # print (f'pair: {pair}')
+                    # print(f'dep_parse[pair[0].start]: {dep_parse[pair[0].start]}')
+                    # print(f'dep_parse[pair[1].start]: {dep_parse[pair[1].start]}')
                     path = shortest_dependency_path(dep_parse, dep_parse[pair[0].start], dep_parse[pair[1].start])
                     if len(path) != 2:
                         if (extend_children):
                             path = add_children_deps(path, dep_parse)
                         else:
                             path = [int(x) for x in path]
+                        # print(f'path: {path}')
                         shortest_path = pair[0].label_+'_<'+ str(dep_parse[pair[0].start:pair[0].end]) + '> '
                         pos_tags = ['<' + pair[0].label_ + '>']
                         shortest_path += ' '.join([dep_parse[j].text for j in path[1:-1]])
