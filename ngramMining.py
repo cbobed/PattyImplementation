@@ -25,6 +25,10 @@ import scipy.stats as st
 MIN_NGRAM_LENGTH=2
 MAX_NGRAM_LENGTH=3
 
+# it can be 'APRIORI', 'FPGROWTH', 'FPMAX'
+MINING_ALGORITHM = 'FPGROWTH'
+MIN_SUPPORT=0.05
+
 def generate_seqmining_dataset(patterns):
     """This function generates a sequence database to mine n-grams from.
 
@@ -94,12 +98,13 @@ def generate_frequent_ngrams_mining_alg(dataset, alg='APRIORI'):
     tr = TransactionEncoder()
     tr_arr = tr.fit(pattern_database).transform(pattern_database)
     df = pd.DataFrame(tr_arr, columns=tr.columns_)
+    print (f'NGrams mining Database Shape: {df.shape}')
     if (alg == 'APRIORI'):
-        frequent_ngram_combinations = apriori(df, min_support=0.1)
+        frequent_ngram_combinations = apriori(df, min_support=MIN_SUPPORT)
     elif (alg == 'FPGROWTH'):
-        frequent_ngram_combinations = fpgrowth(df, min_support=0.1)
+        frequent_ngram_combinations = fpgrowth(df, min_support=MIN_SUPPORT)
     elif (alg == 'FPMAX'):
-        frequent_ngram_combinations = fpmax (df, min_support=0.1)
+        frequent_ngram_combinations = fpmax (df, min_support=MIN_SUPPORT)
 
     fs ={}
     for i in range(len(frequent_ngram_combinations)):

@@ -9,7 +9,7 @@ from collections import defaultdict
 import random
 import copy
 import sys
-from utils import *
+
 import utils
 
 import pickle
@@ -25,6 +25,10 @@ class sol_info_fields():
     SOL_POS_PATTERN = 'sol_pos_pattern'
     ENTITIES = 'entities'
     TYPE_SIGNATURE = 'type_signature'
+    STRENGTH = 'strength'
+    CONFIDENCE = 'confidence'
+    UNTYPED = 'untyped'
+    GENERALIZED = 'generalized'
 
 class generalized_patterns_info_fields():
     ACTIVE = 'active'
@@ -61,7 +65,7 @@ def generate_sol_and_sol_pos_patterns(patterns, ngrams, post):
         entities = []
         type_signature = []
         splitted_pattern = []
-        matches = find_entity_matches(pattern)
+        matches = utils.find_entity_matches(pattern)
         prev_match = next(matches)
         line = pattern [0:prev_match.start()]
         splitted_pattern+=pattern [0:prev_match.start()].split()
@@ -104,12 +108,12 @@ def generate_sol_and_sol_pos_patterns(patterns, ngrams, post):
         # assert len(words) == len(line.split(" "))
         # we only keep the tokens belonging to an entity or a substituted ngram ($)
         for i in range(len(words)):
-            if words[i] != "$" and not is_entity(words[i]):
+            if words[i] != "$" and not utils.is_entity(words[i]):
                 words[i] = "*"
         # print (words)
         # toks = pattern.split(" ")
         for i in range(len(words)):
-            if is_entity(words[i]):
+            if utils.is_entity(words[i]):
                 pos_line.append(splitted_pattern[i])
                 pos_line_tags.append(splitted_pattern[i])
             elif words[i] == "$":

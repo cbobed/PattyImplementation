@@ -16,6 +16,9 @@ from utils import *
 import pickle
 import math
 
+from solPatternGeneration import sol_info_fields as sif
+from solPatternGeneration import generalized_patterns_info_fields as gpif
+
 MODEL = 'es_core_news_sm'
 MODEL = 'es_core_news_lg'
 
@@ -136,26 +139,27 @@ def detype(pat):
     strret = ' '.join(strret)
     return strret
 
-def get_strength_confidence(p_s_c, utc):
-    strength = dict()
-    confidence = dict()
-    for pat in utc:
-        # we have to gather all the accum_sup of the typed patterns associated to it
-        strength[pat] = 0;
-        for sign in utc[pat]:
-            strength[pat] += utc[pat][sign]['accum_sup']
-    for pat in p_s_c:
-        # here, there should be just ONE signature
-        assert len(p_s_c[pat]) == 1
-        strength[pat] = 0;
-        for sign in p_s_c[pat]:
-            strength[pat] += p_s_c[pat][sign]['accum_sup']
-    for pat in p_s_c:
-        if (detype(pat) in strength):
-            confidence[pat] = strength[pat] / strength[(detype(pat))]
+def get_strength_confidence(sol_info, generalized_sol_info):
+    strength_conf_info = {}
+    for pat in generalized_sol_info:
+        strength_conf_info[pat] = {sif.STRENGTH: len(generalized_sol_info[pat][sif.ENTITIES]),
+                                   sif.UNTYPED: pat == detype(pat),
+                                   sif.GENERALIZED: True}
+    for pat in [x for x in strength_conf_info if not strength_conf_info[x][sif.UNTYPED]]:
+        if (detype(pat) in strength_conf_info):
+            strength_conf_info[pat][sif.CONFIDENCE] = strength_conf_info[pat][sif.STRENGTH] / strength_conf_info[detype(pat)][sif.STRENGTH]
+        else:
+            print(f'|{pat}| *** |{detype(pat)}| not registered ')
+
+    for pat in sol_info:
+        strength_conf_info[pat] = {sif.STRENGTH: len(sol_info[pat][sif.ENTITIES]),
+                                   sif.UNTYPED: pat == detype(pat),
+                                   sif.GENERALIZED: False}
+        if (detype(pat) in strength_conf_info):
+            strength_conf_info[pat][sif.CONFIDENCE] = strength_conf_info[pat][sif.STRENGTH] / strength_conf_info[detype(pat)][sif.STRENGTH]
         else:
             print (f'|{pat}| *** |{detype(pat)}| not registered ')
-    return strength, confidence
+    return strength_conf_info
 
 def convert_patterns_list(p_s_c):
     p_l_s_c = dict()

@@ -9,10 +9,8 @@ from collections import defaultdict
 import random
 import copy
 import sys
-from utils import *
 import utils
 
-from solPatternGeneration import is_entity
 from solPatternGeneration import sol_info_fields as sif
 from solPatternGeneration import generalized_patterns_info_fields as gpif
 from solPatternGeneration import check_ngram
@@ -101,10 +99,10 @@ def register_generalized_pattern(generalized_sol_pattern, current_sol_pattern, g
 #     return
 
 def anything_generalizable(poss):
-    return any([not is_entity(x) and x != "*" for x in poss])
+        return any([not utils.is_entity(x) and x != "*" for x in poss])
 
 def substitute_ne_placeholders(pattern):
-    aux = detype(pattern)
+    aux = utils.detype(pattern)
     return aux
 
 def remove_contiguous_asterisks(pattern):
@@ -115,7 +113,16 @@ def remove_contiguous_asterisks(pattern):
             result = ' '.join([result, splitted_pattern[i]])
         # else, we omit that entry
     return result
-#
+
+def fill_generalized_patterns_info (generalized_patterns, current_gen_pattern, orig_patterns):
+    if current_gen_pattern not in generalized_patterns:
+        generalized_patterns[current_gen_pattern] = {}
+    generalized_patterns[current_gen_pattern][sif.SOL_PATTERN] = current_gen_pattern
+    generalized_patterns[current_gen_pattern][sif.ENTITIES] = set()
+    generalized_patterns[current_gen_pattern][sif.TYPE_SIGNATURE] = set()
+    for orig_pat in orig_patterns:
+        generalized_patterns[current_gen_pattern][sif.ENTITIES].update(orig_patterns[orig_pat][sif.ENTITIES])
+        generalized_patterns[current_gen_pattern][sif.TYPE_SIGNATURE].update(orig_patterns[orig_pat][sif.TYPE_SIGNATURE])
 
 
 def gensyngen(sol_info, ngrams):
@@ -127,6 +134,7 @@ def gensyngen(sol_info, ngrams):
     """
     generalized_patterns = {}
     aggregated_generalized_patterns = {}
+    ordered_ngrams = sorted(ngrams, key=lambda kv: (len(kv[0]), kv[1]), reverse=True)
     for current_sol in sol_info:
         print(f'originalPattern: {current_sol}')
         pat = current_sol.split(" ")
@@ -152,7 +160,7 @@ def gensyngen(sol_info, ngrams):
         # other more comprehensive estrategies could be applied/implemented here
         mask = [False]*len(pat)
         for i in range(len(pat)):
-            if is_entity(pat[i]) or pat[i] == "*":
+            if utils.is_entity(pat[i]) or pat[i] == "*":
                 mask[i] = True
 
         # we can work just with the False elements
@@ -161,23 +169,28 @@ def gensyngen(sol_info, ngrams):
         syn = ''
         while current_pos < len(pat):
             if not mask[current_pos]:
-                for string, support in sorted(ngrams, key=lambda kv: (len(kv[0]), kv[1]), reverse=True):
+                # by default we will move just one, but can be modified by the length of the ngrams that are substituted
+                # in this position
+                next_current_pos = current_pos + 1
+                for string, support in ordered_ngrams:
                     current_ngram = string.split(' ')
                     if (current_pos+len(current_ngram)) < len(pat):
                         if check_ngram(current_ngram, pat, current_pos) and all([not x for x in mask[current_pos:current_pos+len(current_ngram)]]):
-                            if (i-1) > 0:
-                                if pat[current_pos] != '*':
+                            if (current_pos-1) > 0:
+                                if pat[current_pos-1] != '*':
                                     syn = ' '.join([syn, '*'])
                                     mask[current_pos:current_pos+len(current_ngram)]=[True]*(len(current_ngram))
-                                    current_pos += len(current_ngram)
-                            elif i+len(current_ngram) < len(pat):
-                                if pat[i+len(current_ngram)] != '*':
+                                    next_current_pos = max(current_pos + len(current_ngram), next_current_pos)
+                            elif current_pos+len(current_ngram) < len(pat):
+                                if pat[current_pos+len(current_ngram)] != '*':
                                     syn = ' '.join([syn, '*'])
                                     mask[current_pos:current_pos + len(current_ngram)] = [True] * (len(current_ngram))
-                                    current_pos += len(current_ngram)
+                                    next_current_pos = max(current_pos + len(current_ngram), next_current_pos)
+
                             else:
                                 syn = ' '.join([syn,pat[current_pos]])
-                                current_pos += 1
+                                next_current_pos = max(current_pos + 1, next_current_pos)
+                current_pos = next_current_pos
             else:
                 syn = ' '.join([syn,pat[current_pos]])
                 current_pos += 1
@@ -188,71 +201,69 @@ def gensyngen(sol_info, ngrams):
         syn = substitute_ne_placeholders(syn)
         register_generalized_pattern(syn, current_sol, generalized_patterns, sol_info)
 
-        lenpos = 0
-        for ipos in range(len(pat)):
-            if (is_entity(poss[ipos])) or (poss[ipos] =="*"):
-                continue
-            else:
-                lenpos += 1
-                ptemp = copy.deepcopy(pat)
+        # lenpos = 0
+        # for ipos in range(len(pat)):
+        #     if (utils.is_entity(poss[ipos])) or (poss[ipos] =="*"):
+        #         continue
+        #     else:
+        #         lenpos += 1
+        #         ptemp = copy.deepcopy(pat)
+        #
+        #         ptemp[ipos] = poss[ipos]
+        #         syn = ' '.join(ptemp)
+        #         register_generalized_pattern(syn, current_sol, generalized_patterns, sol_info)
+        #
+        #         ptemp[ipos] = "[WORD]"
+        #         syn = ' '.join(ptemp)
+        #         register_generalized_pattern(syn, current_sol, generalized_patterns, sol_info)
+        #
+        #         ptemp[ipos] = poss[ipos]
+        #         syn = ' '.join(ptemp)
+        #         syn = substitute_ne_placeholders(syn)
+        #         register_generalized_pattern(syn, current_sol, generalized_patterns, sol_info)
+        #
+        #         ptemp[ipos] = "[WORD]"
+        #         syn = ' '.join(ptemp)
+        #         syn = substitute_ne_placeholders(syn)
+        #         register_generalized_pattern(syn, current_sol, generalized_patterns, sol_info)
+        #
+        # if lenpos > 1:
+        #     ptemp = copy.deepcopy(pat)
+        #     for ipos in range(len(pat)):
+        #         if (utils.is_entity(poss[ipos])) or (poss[ipos] =="*"):
+        #             pass
+        #         else:
+        #             ptemp[ipos] = poss[ipos]
+        #     syn = ' '.join(ptemp)
+        #     register_generalized_pattern(syn, current_sol, generalized_patterns, sol_info)
+        #     syn = substitute_ne_placeholders(syn)
+        #     register_generalized_pattern(syn, current_sol, generalized_patterns, sol_info)
+        #
+        #     ptemp = copy.deepcopy(pat)
+        #     for ipos in range(len(pat)):
+        #         if (utils.is_entity(poss[ipos])) or (poss[ipos] =="*"):
+        #             pass
+        #         else:
+        #             ptemp[ipos] = "[WORD]"
+        #     syn = ' '.join(ptemp)
+        #     register_generalized_pattern(syn, current_sol, generalized_patterns, sol_info)
+        #     syn = substitute_ne_placeholders(syn)
+        #     register_generalized_pattern(syn, current_sol, generalized_patterns, sol_info)
 
-                ptemp[ipos] = poss[ipos]
-                syn = ' '.join(ptemp)
-                register_generalized_pattern(syn, current_sol, generalized_patterns, sol_info)
-
-                ptemp[ipos] = "[WORD]"
-                syn = ' '.join(ptemp)
-                register_generalized_pattern(syn, current_sol, generalized_patterns, sol_info)
-
-                ptemp[ipos] = poss[ipos]
-                syn = ' '.join(ptemp)
-                syn = substitute_ne_placeholders(syn)
-                register_generalized_pattern(syn, current_sol, generalized_patterns, sol_info)
-
-                ptemp[ipos] = "[WORD]"
-                syn = ' '.join(ptemp)
-                syn = substitute_ne_placeholders(syn)
-                register_generalized_pattern(syn, current_sol, generalized_patterns, sol_info)
-
-        if lenpos > 1:
-            ptemp = copy.deepcopy(pat)
-            for ipos in range(len(pat)):
-                if (is_entity(poss[ipos])) or (poss[ipos] =="*"):
-                    pass
-                else:
-                    ptemp[ipos] = poss[ipos]
-            syn = ' '.join(ptemp)
-            register_generalized_pattern(syn, current_sol, generalized_patterns, sol_info)
-            syn = substitute_ne_placeholders(syn)
-            register_generalized_pattern(syn, current_sol, generalized_patterns, sol_info)
-
-            ptemp = copy.deepcopy(pat)
-            for ipos in range(len(pat)):
-                if (is_entity(poss[ipos])) or (poss[ipos] =="*"):
-                    pass
-                else:
-                    ptemp[ipos] = "[WORD]"
-            syn = ' '.join(ptemp)
-            register_generalized_pattern(syn, current_sol, generalized_patterns, sol_info)
-            syn = substitute_ne_placeholders(syn)
-            register_generalized_pattern(syn, current_sol, generalized_patterns, sol_info)
-
-    print(f'Active :: ')
-    for gen_pat in [x for x in generalized_patterns if generalized_patterns[x][gpif.ACTIVE]]:
-        print(f'{gen_pat} :::: {generalized_patterns[gen_pat]}')
-    print(f'Non Active :: ')
-    for gen_pat in [x for x in generalized_patterns if not generalized_patterns[x][gpif.ACTIVE]]:
-        print(f'{gen_pat} :::: {generalized_patterns[gen_pat]}')
-    print(f'active syn size: {len([x for x in generalized_patterns if generalized_patterns[x][gpif.ACTIVE]])}')
-    print(f'complete size: {len(generalized_patterns)}')
+    # print(f'Active :: ')
+    # for gen_pat in [x for x in generalized_patterns if generalized_patterns[x][gpif.ACTIVE]]:
+    #     print(f'{gen_pat} :::: {generalized_patterns[gen_pat]}')
+    # print(f'Non Active :: ')
+    # for gen_pat in [x for x in generalized_patterns if not generalized_patterns[x][gpif.ACTIVE]]:
+    #     print(f'{gen_pat} :::: {generalized_patterns[gen_pat]}')
+    # print(f'active syn size: {len([x for x in generalized_patterns if generalized_patterns[x][gpif.ACTIVE]])}')
+    # print(f'complete size: {len(generalized_patterns)}')
 
     for gen_pat in generalized_patterns:
-        gen_pat[sif.SOL_PATTERN] = gen_pat
-        gen_pat[sif.ENTITIES] = set()
-        gen_pat[sif.TYPE_SIGNATURE] = set()
-        for orig_pat in generalized_patterns[gpif.ORIGINAL_SOL_PATTERNS]:
-            gen_pat[sif.ENTITIES].update(orig_pat[sif.ENTITIES])
-            
+        fill_generalized_patterns_info(generalized_patterns, gen_pat, generalized_patterns[gen_pat][gpif.ORIGINAL_SOL_PATTERNS])
+    # We register one pattern by hand <ENTITY> * <ENTITY>, it subsumes all the original patterns
+    TOP_PATTERN = '<ENTITY> * <ENTITY>'
+    fill_generalized_patterns_info(generalized_patterns, TOP_PATTERN, sol_info)
 
-
-    return retsyncloud, untypedcloud
+    ## We keep the POS_SOL pattern empty in the generalized, as it should be already present
+    return generalized_patterns
