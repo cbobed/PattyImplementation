@@ -73,7 +73,8 @@ def shortest_dependency_path(doc, e1=None, e2=None):
             edges.append(('{0}'.format(child.i),
                           '{0}'.format(token.i)))
 
-    graph = nx.Graph(edges)
+    graph = nx.Graph()
+    graph.add_edges_from(edges)
     shortest_path = []
     try:
         # print (f'looking shortest path from {e1.i} to {e2.i}')

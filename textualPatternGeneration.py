@@ -35,8 +35,8 @@ def generate_textual_patterns_with_pos_tags(corpus, extend_children=False):
     textual_patterns = []
     for i, sentence in enumerate(corpus):
         dep_parse = nlp(sentence)
-        # print (f'{i}::{sentence}')
-        # print (f'{i}:: Ents{dep_parse.ents}')
+        print (f'{i}::{sentence}')
+        print (f'{i}:: Ents{dep_parse.ents}')
         try:
             if len(dep_parse.ents) == 2:
                 path = shortest_dependency_path(dep_parse, dep_parse[dep_parse.ents[0].start], dep_parse[dep_parse.ents[1].start])

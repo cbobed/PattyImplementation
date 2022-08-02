@@ -33,7 +33,7 @@ from spacy.lang.es.examples import sentences
 sents = load_sentences(sys.argv[1])
 print(f'{len(sents)} sentences in the corpus')
 
-# # code to use the spacy set of test sentences
+# code to use the spacy set of test sentences
 # sents = []
 # for s in sentences:
 #     sents.append(s)
@@ -77,7 +77,7 @@ print(f'{len(sents)} sentences in the corpus')
 print (f'Generating patterns with their POS Tags ... ')
 textual_patterns, post = generate_textual_patterns_with_pos_tags(sents, True)
 # print (textual_patterns)
-print (f'Done. ')
+# print (f'Done. ')
 
 # corpus = read_corpus(os.path.join(params['data_dir'], params['corpus_fn']))
 # textual_patterns, post = generate_textual_patterns_with_pos_tags(corpus, False)
